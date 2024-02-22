@@ -1,22 +1,63 @@
 import React, { Component } from "react";
-
-const tasks = [
-  {
-    id: 1,
-    title: "Call Clients",
-    description: "Call clients for overdue",
-    completed: true,
-  },
-];
+import Modal from "./components/Modal";
+import axios from 'axios';
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      modal: false,
       viewcompleted: false,
-      tasklist: tasks,
+      activeItem: {
+        title: "",
+        description: "",
+        completed: false,
+      },
+      todoList : []
     };
   }
+
+  componentDidMount() {
+    this.refreshList();
+  }
+
+  refreshList = () => {
+    axios.get("http://localhost:8000/api/tasks/")
+    .then(res => this.setState({todoList: res.data}))
+    .catch(err => console.log(err))
+  }
+
+  toggle = () => {
+    this.setState({ modal: !this.state.modal });
+  };
+
+  handleSubmit = (item) => {
+    this.toggle();
+    if (item.id) {
+      axios.put(`http://localhost:8000/api/tasks/${item.id}/`, item)
+      .then(res => this.refreshList())
+      .catch(err => console.log(err));
+    } else {
+      axios.post("http://localhost:8000/api/tasks/", item)
+      .then(res => this.refreshList())
+      .catch(err => console.log(err));
+    }
+  };
+
+  handleDelete = (item) => {
+    axios.delete(`http://localhost:8000/api/tasks/${item.id}/`)
+      .then(res => this.refreshList())
+      .catch(err => console.log(err));
+  };
+
+  createItem = () => {
+    const item = { title: "", description: "", completed: false };
+    this.setState({ activeItem: item, modal: !this.state.modal });
+  };
+
+  editItem = (item) => {
+    this.setState({ activeItem: item, modal: !this.state.modal });
+  };
 
   displayCompleted = (status) => {
     this.setState({ viewcompleted: status });
@@ -43,7 +84,7 @@ class App extends Component {
 
   renderItems = () => {
     const { viewcompleted } = this.state;
-    const newItems = this.state.tasklist.filter(
+    const newItems = this.state.todoList.filter(
       (item) => item.completed === viewcompleted
     );
     return newItems.map((item) => (
@@ -53,7 +94,7 @@ class App extends Component {
       >
         <span
           className={`todo-title mr-2 ${
-            this.state.viewcompleted ? "completed-todo" : ""
+            item.completed ? "completed-todo" : ""
           }`}
           title={item.title}
         >
@@ -61,8 +102,8 @@ class App extends Component {
         </span>
 
         <span>
-          <button className="btn btn-info mr-2"> Edit </button>
-          <button className="btn btn-danger mr-2">Delete</button>
+          <button className="btn btn-info mr-2" onClick={() => this.editItem(item)}> Edit </button>
+          <button className="btn btn-danger mr-2" onClick={() => this.handleDelete(item)}>Delete</button>
         </span>
       </li>
     ));
@@ -70,15 +111,15 @@ class App extends Component {
 
   render() {
     return (
-      <main className="context">
-        <h1 className="text-black text-uppercase text-center my-4">
+      <main className="content p-3 mb-3 bg-info">
+        <h1 className="text-white text-uppercase text-center my-4">
           Task Manager
         </h1>
         <div className="row">
           <div className="col-md-6 col-sm-10 max-auto p-0">
             <div className="card p-3">
               <div>
-                <button className="btn btn-warning"> Add Task</button>
+                <button className="btn btn-warning" onClick={this.createItem}> Add Task</button>
               </div>
               {this.renderTabList()}
               <ul className="list-group list-group-flush">
@@ -87,6 +128,16 @@ class App extends Component {
             </div>
           </div>
         </div>
+        <footer className="my-3 mb-2 bg-info text-ehite text-center">
+          Copyright 2021 &copy; All rights Reserved
+        </footer>
+        {this.state.modal ? (
+          <Modal
+            activeItem={this.state.activeItem}
+            toggle={this.toggle}
+            onSave={this.handleSubmit}
+          />
+        ) : null}
       </main>
     );
   }
